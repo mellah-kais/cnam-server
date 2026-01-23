@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String     @id @default(uuid())
+  name           String
+  cnamIdentifier String
+  specialty      String     @default("Dentiste")
+  sealImageUrl   String?
+  email          String     @unique
+  password       String
+  patients       Patient[]
+  bulletins      Bulletin[]
+  bordereaux     Bordereau[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model Patient {
+  id                  String     @id @default(uuid())
+  nationalId          String     @unique
+  fullName            String
+  birthDate           DateTime
+  cnamCategory        String
+  currentPlafondUsage Float      @default(0)
+  dentistId           String
+  dentist             User       @relation(fields: [dentistId], references: [id])
+  bulletins           Bulletin[]
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+}
+
+model Bulletin {
+  id           String   @id @default(uuid())
+  patientId    String
+  patient      Patient  @relation(fields: [patientId], references: [id])
+  dentistId    String
+  dentist      User     @relation(fields: [dentistId], references: [id])
+  visitDate    DateTime
+  actCodes     String
+  totalAmount  Float
+  status       String   @default("Draft")
+  bordereauRef String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Bordereau {
+  id                  String    @id @default(uuid())
+  ref                 String    @unique
+  dentistId           String
+  dentist             User      @relation(fields: [dentistId], references: [id])
+  creationDate        DateTime  @default(now())
+  totalAmount         Float
+  status              String    @default("Pending")
+  expectedPaymentDate DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
