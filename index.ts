@@ -24,6 +24,27 @@ app.use((req, res, next) => {
     next();
 });
 
+app.get('/', (req, res) => {
+    res.send(`
+        <h1>CNAM Assistant API</h1>
+        <p>Status: Running</p>
+        <p>Time: ${new Date().toISOString()}</p>
+        <hr>
+        <p>Available endpoints:</p>
+        <ul>
+            <li>GET /api/health</li>
+            <li>POST /api/auth/login</li>
+            <li>POST /api/auth/signup</li>
+            <li>POST /api/voice-to-form</li>
+        </ul>
+    `);
+});
+
+// Handle ghost POST requests from old Next.js clients
+app.post('/', (req, res) => {
+    res.json({ message: "This is the CNAM API. Please update your client or clear browser cache." });
+});
+
 // --- Configuration & Clients ---
 import multer from 'multer';
 import fs from 'fs';
@@ -46,7 +67,7 @@ app.post('/api/auth/signup', async (req: Request, res: Response): Promise<any> =
         if (existingUser) return res.status(400).json({ error: 'User already exists' });
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user = await prisma.user.create({
+        const user = await (prisma.user.create as any)({
             data: {
                 name,
                 email,
@@ -69,7 +90,7 @@ app.post('/api/auth/login', async (req: Request, res: Response): Promise<any> =>
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) return res.status(400).json({ error: 'Invalid credentials' });
 
-        const isValid = await bcrypt.compare(password, user.password);
+        const isValid = await bcrypt.compare(password, (user as any).password);
         if (!isValid) return res.status(400).json({ error: 'Invalid credentials' });
 
         const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
