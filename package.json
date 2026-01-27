@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "ts-node-dev index.ts",
-    "start": "node dist/index.js",
+    "dev": "ts-node-dev src/index.ts",
+    "start": "node dist/src/index.js",
     "build": "tsc",
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio"
@@ -14,11 +14,14 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.19.2",
+    "@types/axios": "^0.9.36",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
     "assemblyai": "^4.22.1",
+    "axios": "^1.13.3",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
