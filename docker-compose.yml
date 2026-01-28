@@ -26,6 +26,7 @@ services:
       PORT: 3001
       JWT_SECRET: ${JWT_SECRET:-supersecret}
       OLLAMA_URL: ${OLLAMA_URL:-http://172.17.0.1:11434/api/generate}
+      VOSK_URL: ${VOSK_URL:-http://172.17.0.1:8080/transcribe}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:0.5b-instruct-q4_0}
     depends_on:
       - db

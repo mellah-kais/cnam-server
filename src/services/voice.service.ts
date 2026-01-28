@@ -1,7 +1,7 @@
 import axios from 'axios';
 import fs from 'fs';
 import FormData from 'form-data';
-import { WHISPER_URL, OLLAMA_URL, OLLAMA_MODEL } from '../config/config';
+import { VOSK_URL, OLLAMA_URL, OLLAMA_MODEL } from '../config/config';
 import { generateVoicePrompt } from '../utils/prompts';
 
 export class VoiceService {
@@ -13,7 +13,7 @@ export class VoiceService {
         const startTime = Date.now();
 
         // 1. Transcribe with Local Vosk
-        console.log('[VOSK] 📤 Sending audio to:', WHISPER_URL);
+        console.log('[VOSK] 📤 Sending audio to:', VOSK_URL);
 
         const formData = new FormData();
         formData.append('audio', fs.createReadStream(filePath), {
@@ -23,7 +23,7 @@ export class VoiceService {
 
         let text: string;
         try {
-            const voskResponse = await axios.post(WHISPER_URL, formData, {
+            const voskResponse = await axios.post(VOSK_URL, formData, {
                 headers: {
                     ...formData.getHeaders(),
                 },
