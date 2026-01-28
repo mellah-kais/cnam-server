@@ -16,7 +16,7 @@ services:
 
   server:
     build:
-      context: ./server
+      context: .
     container_name: cnam_server
     restart: always
     ports:
@@ -28,7 +28,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       ASSEMBLYAI_API_KEY: ${ASSEMBLYAI_API_KEY}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434/api/generate}
+      OLLAMA_URL: ${OLLAMA_URL:-http://172.17.0.1:11434/api/generate}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:0.5b-instruct-q4_0}
     depends_on:
       - db
