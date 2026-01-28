@@ -12,35 +12,43 @@ export class VoiceService {
 
         const startTime = Date.now();
 
-        // 1. Transcribe with Local Whisper
-        console.log('[WHISPER] 📤 Sending audio to:', WHISPER_URL);
+        // 1. Transcribe with Local Vosk
+        console.log('[VOSK] 📤 Sending audio to:', WHISPER_URL);
 
         const formData = new FormData();
-        formData.append('audio_file', fs.createReadStream(filePath), {
+        formData.append('audio', fs.createReadStream(filePath), {
             filename: originalName,
             contentType: 'audio/wav'
         });
 
         let text: string;
         try {
-            const whisperResponse = await axios.post(WHISPER_URL, formData, {
+            const voskResponse = await axios.post(WHISPER_URL, formData, {
                 headers: {
                     ...formData.getHeaders(),
                 },
-                params: {
-                    task: 'transcribe',
-                    language: 'fr',
-                    output: 'txt'
-                },
-                timeout: 30000, // 30 second timeout
+                maxBodyLength: Infinity,
+                maxContentLength: Infinity,
+                timeout: 60000,
             });
 
-            text = whisperResponse.data;
-            console.log('[WHISPER] ✅ Transcription:', text);
-            console.log(`[WHISPER] ⏱️ Time: ${Date.now() - startTime}ms`);
+            // Vosk response handling
+            if (typeof voskResponse.data === 'string') {
+                text = voskResponse.data;
+            } else if (voskResponse.data.text) {
+                text = voskResponse.data.text;
+            } else {
+                text = JSON.stringify(voskResponse.data);
+            }
+
+            console.log('[VOSK] ✅ Transcription:', text);
+            console.log(`[VOSK] ⏱️ Time: ${Date.now() - startTime}ms`);
         } catch (error: any) {
-            console.log('[WHISPER] ❌ Error:', error.message);
-            throw new Error(`Whisper transcription failed: ${error.message}`);
+            console.log('[VOSK] ❌ Error:', error.message);
+            if (error.response) {
+                console.log('[VOSK] 📦 Response data:', error.response.data);
+            }
+            throw new Error(`Vosk transcription failed: ${error.message}`);
         }
 
         if (!text || text.trim().length === 0) {
