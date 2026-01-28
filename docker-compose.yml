@@ -28,6 +28,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       ASSEMBLYAI_API_KEY: ${ASSEMBLYAI_API_KEY}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      WHISPER_URL: ${WHISPER_URL:-http://172.17.0.1:5000/asr}
       OLLAMA_URL: ${OLLAMA_URL:-http://172.17.0.1:11434/api/generate}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:0.5b-instruct-q4_0}
     depends_on:

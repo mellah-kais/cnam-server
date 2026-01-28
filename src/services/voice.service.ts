@@ -1,56 +1,98 @@
 import axios from 'axios';
 import fs from 'fs';
-import { assemblyAI, OLLAMA_URL, OLLAMA_MODEL } from '../config/config';
+import FormData from 'form-data';
+import { WHISPER_URL, OLLAMA_URL, OLLAMA_MODEL } from '../config/config';
 import { generateVoicePrompt } from '../utils/prompts';
 
 export class VoiceService {
     static async processVoiceToForm(filePath: string, originalName: string, size: number) {
-        console.log('--- Processing Voice to Form with AssemblyAI + Qwen2 ---');
-        console.log('File:', originalName, 'Size:', size);
+        console.log('='.repeat(60));
+        console.log('[VOICE-TO-FORM] 🎤 New request');
+        console.log('[VOICE-TO-FORM] 📁 File:', originalName, 'Size:', size, 'bytes');
 
-        // 1. Transcribe with AssemblyAI
-        const transcript = await assemblyAI.transcripts.transcribe({
-            audio: filePath,
-            language_code: 'fr',
+        const startTime = Date.now();
+
+        // 1. Transcribe with Local Whisper
+        console.log('[WHISPER] 📤 Sending audio to:', WHISPER_URL);
+
+        const formData = new FormData();
+        formData.append('audio_file', fs.createReadStream(filePath), {
+            filename: originalName,
+            contentType: 'audio/wav'
         });
 
-        if (transcript.status === 'error') {
-            throw new Error(transcript.error);
+        let text: string;
+        try {
+            const whisperResponse = await axios.post(WHISPER_URL, formData, {
+                headers: {
+                    ...formData.getHeaders(),
+                },
+                params: {
+                    task: 'transcribe',
+                    language: 'fr',
+                    output: 'txt'
+                },
+                timeout: 30000, // 30 second timeout
+            });
+
+            text = whisperResponse.data;
+            console.log('[WHISPER] ✅ Transcription:', text);
+            console.log(`[WHISPER] ⏱️ Time: ${Date.now() - startTime}ms`);
+        } catch (error: any) {
+            console.log('[WHISPER] ❌ Error:', error.message);
+            throw new Error(`Whisper transcription failed: ${error.message}`);
         }
 
-        const text = transcript.text;
         if (!text || text.trim().length === 0) {
             throw new Error('No speech detected');
         }
 
         // 2. Parse with Local Qwen2
-        const prompt = generateVoicePrompt(text);
+        const ollamaStartTime = Date.now();
+        const prompt = generateVoicePrompt(text.trim());
+        console.log('[OLLAMA] 📤 Sending to:', OLLAMA_URL);
+        console.log('[OLLAMA] 🤖 Model:', OLLAMA_MODEL);
 
-        const ollamaResponse = await axios.post(OLLAMA_URL, {
-            model: OLLAMA_MODEL,
-            prompt: prompt,
-            stream: false,
-            keep_alive: 0,
-            options: {
-                num_predict: 250,
-                temperature: 0,
-                num_thread: 2,
-                top_p: 0.1
+        try {
+            const ollamaResponse = await axios.post(OLLAMA_URL, {
+                model: OLLAMA_MODEL,
+                prompt: prompt,
+                stream: false,
+                keep_alive: 0,
+                options: {
+                    num_predict: 250,
+                    temperature: 0,
+                    num_thread: 4,
+                    top_p: 0.1
+                }
+            });
+
+            const resultText = ollamaResponse.data.response;
+            console.log('[OLLAMA] ✅ Raw response:', resultText);
+            console.log(`[OLLAMA] ⏱️ Time: ${Date.now() - ollamaStartTime}ms`);
+
+            const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                console.log('[OLLAMA] ❌ No JSON found in response');
+                throw new Error("Could not find JSON in Qwen response");
             }
-        });
 
-        const resultText = ollamaResponse.data.response;
-        const jsonMatch = resultText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("Could not find JSON in Qwen response");
+            const resultJson = JSON.parse(jsonMatch[0]);
+            console.log('[OLLAMA] 🎯 Parsed JSON:', JSON.stringify(resultJson, null, 2));
 
-        const resultJson = JSON.parse(jsonMatch[0]);
+            // Cleanup local storage
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
-        // Cleanup local storage
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+            console.log(`[VOICE-TO-FORM] ⏱️ Total time: ${Date.now() - startTime}ms`);
+            console.log('='.repeat(60));
 
-        return {
-            transcript: text,
-            data: resultJson
-        };
+            return {
+                transcript: text.trim(),
+                data: resultJson
+            };
+        } catch (error: any) {
+            console.log('[OLLAMA] ❌ Error:', error.message);
+            throw error;
+        }
     }
 }
