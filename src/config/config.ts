@@ -8,6 +8,7 @@ export const assemblyAI = new AssemblyAI({
 });
 
 export const VOSK_URL = process.env.VOSK_URL || 'http://172.17.0.1:8080/transcribe';
+export const WHISPER_URL = process.env.WHISPER_URL || 'http://127.0.0.1:8000/transcribe';
 export const OLLAMA_URL = process.env.OLLAMA_URL || 'http://172.17.0.1:11434/api/generate';
 export const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:0.5b-instruct-q4_0';
 export const JWT_SECRET = process.env.JWT_SECRET || 'secret';

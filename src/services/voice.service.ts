@@ -1,7 +1,7 @@
 import axios from 'axios';
 import fs from 'fs';
 import FormData from 'form-data';
-import { VOSK_URL, OLLAMA_URL, OLLAMA_MODEL } from '../config/config';
+import { WHISPER_URL, OLLAMA_URL, OLLAMA_MODEL } from '../config/config';
 import { generateVoicePrompt } from '../utils/prompts';
 
 export class VoiceService {
@@ -12,43 +12,46 @@ export class VoiceService {
 
         const startTime = Date.now();
 
-        // 1. Transcribe with Local Vosk
-        console.log('[VOSK] 📤 Sending audio to:', VOSK_URL);
+        // 1. Transcribe with Local Whisper
+        console.log('[WHISPER] 📤 Sending audio to:', WHISPER_URL);
 
         const formData = new FormData();
-        formData.append('audio', fs.createReadStream(filePath), {
+        // Standard Whisper API usually expects 'file' or 'audio_file'
+        formData.append('file', fs.createReadStream(filePath), {
             filename: originalName,
             contentType: 'audio/wav'
         });
 
         let text: string;
         try {
-            const voskResponse = await axios.post(VOSK_URL, formData, {
+            const whisperResponse = await axios.post(WHISPER_URL, formData, {
                 headers: {
                     ...formData.getHeaders(),
                 },
                 maxBodyLength: Infinity,
                 maxContentLength: Infinity,
-                timeout: 60000,
+                timeout: 300000, // 5 minutes timeout for large model
             });
 
-            // Vosk response handling
-            if (typeof voskResponse.data === 'string') {
-                text = voskResponse.data;
-            } else if (voskResponse.data.text) {
-                text = voskResponse.data.text;
+            // Whisper response handling
+            if (typeof whisperResponse.data === 'string') {
+                text = whisperResponse.data;
+            } else if (whisperResponse.data.text) {
+                text = whisperResponse.data.text;
+            } else if (whisperResponse.data.transcription) {
+                text = whisperResponse.data.transcription;
             } else {
-                text = JSON.stringify(voskResponse.data);
+                text = JSON.stringify(whisperResponse.data);
             }
 
-            console.log('[VOSK] ✅ Transcription:', text);
-            console.log(`[VOSK] ⏱️ Time: ${Date.now() - startTime}ms`);
+            console.log('[WHISPER] ✅ Transcription:', text);
+            console.log(`[WHISPER] ⏱️ Time: ${Date.now() - startTime}ms`);
         } catch (error: any) {
-            console.log('[VOSK] ❌ Error:', error.message);
+            console.log('[WHISPER] ❌ Error:', error.message);
             if (error.response) {
-                console.log('[VOSK] 📦 Response data:', error.response.data);
+                console.log('[WHISPER] 📦 Response data:', error.response.data);
             }
-            throw new Error(`Vosk transcription failed: ${error.message}`);
+            throw new Error(`Whisper transcription failed: ${error.message}`);
         }
 
         if (!text || text.trim().length === 0) {
