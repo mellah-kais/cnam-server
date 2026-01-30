@@ -17,7 +17,7 @@ export class VoiceService {
 
         const formData = new FormData();
         // Standard Whisper API usually expects 'file' or 'audio_file'
-        formData.append('file', fs.createReadStream(filePath), {
+        formData.append('audio_file', fs.createReadStream(filePath), {
             filename: originalName,
             contentType: 'audio/wav'
         });
