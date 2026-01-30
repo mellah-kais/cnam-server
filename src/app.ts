@@ -6,7 +6,9 @@ import routes from './routes';
 
 const app = express();
 
-app.use(morgan('dev'));
+app.use(morgan('dev', {
+    skip: (req) => !req.url?.startsWith('/api') && !req.url?.startsWith('/socket.io')
+}));
 app.use(cors());
 app.use(express.json());
 
@@ -15,9 +17,11 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
-// Manual log to verify any traffic at all
+// Manual log to verify API traffic and filter out bot scans
 app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    if (req.url.startsWith('/api') || req.url.startsWith('/socket.io')) {
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    }
     next();
 });
 
