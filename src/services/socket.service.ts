@@ -69,10 +69,12 @@ export class SocketService {
 
         try {
             const tempFilePath = path.join('uploads', `partial_${socket.id}_${Date.now()}.wav`);
-            // Note: Since raw PCM data might not have headers, 
-            // the Whisper server should ideally support raw or we need to wrap it.
-            // For now, we'll save it and let processVoiceToForm handle it if it expects a file.
-            fs.writeFileSync(tempFilePath, session.buffer);
+
+            // Prepend WAV header so FFmpeg/Whisper can parse the raw PCM stream
+            const wavHeader = this.getWavHeader(session.buffer.length);
+            const wavContent = Buffer.concat([wavHeader, session.buffer]);
+
+            fs.writeFileSync(tempFilePath, wavContent);
 
             const result = await VoiceService.transcribeOnly(tempFilePath, session.language);
 
@@ -89,12 +91,16 @@ export class SocketService {
     private async processFinal(socket: Socket, session: any) {
         try {
             const tempFilePath = path.join('uploads', `final_${socket.id}_${Date.now()}.wav`);
-            fs.writeFileSync(tempFilePath, session.buffer);
+
+            const wavHeader = this.getWavHeader(session.buffer.length);
+            const wavContent = Buffer.concat([wavHeader, session.buffer]);
+
+            fs.writeFileSync(tempFilePath, wavContent);
 
             const result = await VoiceService.processVoiceToForm(
                 tempFilePath,
                 `stream_${socket.id}.wav`,
-                session.buffer.length,
+                wavContent.length,
                 session.language
             );
 
@@ -105,5 +111,30 @@ export class SocketService {
             console.error('[SOCKET] Final processing error:', error);
             socket.emit('error', { message: error.message });
         }
+    }
+
+    private getWavHeader(dataLength: number): Buffer {
+        const sampleRate = 16000;
+        const numChannels = 1;
+        const bitsPerSample = 16;
+        const byteRate = sampleRate * numChannels * bitsPerSample / 8;
+        const blockAlign = numChannels * bitsPerSample / 8;
+
+        const header = Buffer.alloc(44);
+        header.write('RIFF', 0);
+        header.writeUInt32LE(36 + dataLength, 4);
+        header.write('WAVE', 8);
+        header.write('fmt ', 12);
+        header.writeUInt32LE(16, 16);
+        header.writeUInt16LE(1, 20); // PCM
+        header.writeUInt16LE(numChannels, 22);
+        header.writeUInt32LE(sampleRate, 24);
+        header.writeUInt32LE(byteRate, 28);
+        header.writeUInt16LE(blockAlign, 32);
+        header.writeUInt16LE(bitsPerSample, 34);
+        header.write('data', 36);
+        header.writeUInt32LE(dataLength, 40);
+
+        return header;
     }
 }
