@@ -2,10 +2,10 @@ import axios from 'axios';
 import fs from 'fs';
 import FormData from 'form-data';
 import { WHISPER_URL, OLLAMA_URL, OLLAMA_MODEL } from '../config/config';
-import { generateVoicePrompt } from '../utils/prompts';
+import { generateVoicePrompt, WHISPER_INITIAL_PROMPTS } from '../utils/prompts';
 
 export class VoiceService {
-    static async processVoiceToForm(filePath: string, originalName: string, size: number) {
+    static async processVoiceToForm(filePath: string, originalName: string, size: number, lang: string = 'ar') {
         console.log('='.repeat(60));
         console.log('[VOICE-TO-FORM] 🎤 New request');
         console.log('[VOICE-TO-FORM] 📁 File:', originalName, 'Size:', size, 'bytes');
@@ -13,7 +13,21 @@ export class VoiceService {
         const startTime = Date.now();
 
         // 1. Transcribe with Local Whisper
-        console.log('[WHISPER] 📤 Sending audio to:', WHISPER_URL);
+        const initialPrompt = (WHISPER_INITIAL_PROMPTS[lang] || WHISPER_INITIAL_PROMPTS['ar']) as string;
+
+        // Build Whisper URL with parameters
+        const urlParams: any = {
+            task: 'transcribe',
+            language: lang,
+            encode: 'true',
+            output: 'json',
+            initial_prompt: initialPrompt
+        };
+
+        const whisperParams = new URLSearchParams(urlParams);
+
+        const fullWhisperUrl = `${WHISPER_URL}?${whisperParams.toString()}`;
+        console.log('[WHISPER] 📤 Sending audio to:', fullWhisperUrl);
 
         const formData = new FormData();
         // Standard Whisper API usually expects 'file' or 'audio_file'
@@ -24,7 +38,7 @@ export class VoiceService {
 
         let text: string;
         try {
-            const whisperResponse = await axios.post(WHISPER_URL, formData, {
+            const whisperResponse = await axios.post(fullWhisperUrl, formData, {
                 headers: {
                     ...formData.getHeaders(),
                 },
@@ -58,9 +72,9 @@ export class VoiceService {
             throw new Error('No speech detected');
         }
 
-        // 2. Parse with Local Qwen2
+        // 2. Parse with Local LLM (Ollama)
         const ollamaStartTime = Date.now();
-        const prompt = generateVoicePrompt(text.trim());
+        const prompt = generateVoicePrompt(text.trim(), lang);
         console.log('[OLLAMA] 📤 Sending to:', OLLAMA_URL);
         console.log('[OLLAMA] 🤖 Model:', OLLAMA_MODEL);
 

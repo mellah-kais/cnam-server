@@ -10,9 +10,10 @@ export const processVoice = async (req: Request, res: Response) => {
     }
 
     const filePath = file.path;
+    const lang = req.body.lang || 'ar';
 
     try {
-        const result = await VoiceService.processVoiceToForm(filePath, file.originalname, file.size);
+        const result = await VoiceService.processVoiceToForm(filePath, file.originalname, file.size, lang);
         res.json(result);
     } catch (error: any) {
         console.error('Processing error:', error.message);
