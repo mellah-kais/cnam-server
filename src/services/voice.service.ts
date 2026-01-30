@@ -120,4 +120,52 @@ export class VoiceService {
             throw error;
         }
     }
+
+    static async transcribeOnly(filePath: string, lang: string = 'ar'): Promise<string> {
+        const startTime = Date.now();
+        const initialPrompt = (WHISPER_INITIAL_PROMPTS[lang] || WHISPER_INITIAL_PROMPTS['ar']) as string;
+
+        const urlParams: any = {
+            task: 'transcribe',
+            language: lang,
+            encode: 'true',
+            output: 'json',
+            initial_prompt: initialPrompt
+        };
+
+        const whisperParams = new URLSearchParams(urlParams);
+        const fullWhisperUrl = `${WHISPER_URL}?${whisperParams.toString()}`;
+
+        const formData = new FormData();
+        formData.append('audio_file', fs.createReadStream(filePath), {
+            filename: 'partial.wav',
+            contentType: 'audio/wav'
+        });
+
+        try {
+            const whisperResponse = await axios.post(fullWhisperUrl, formData, {
+                headers: { ...formData.getHeaders() },
+                maxBodyLength: Infinity,
+                maxContentLength: Infinity,
+                timeout: 30000,
+            });
+
+            let text: string;
+            if (typeof whisperResponse.data === 'string') {
+                text = whisperResponse.data;
+            } else if (whisperResponse.data.text) {
+                text = whisperResponse.data.text;
+            } else if (whisperResponse.data.transcription) {
+                text = whisperResponse.data.transcription;
+            } else {
+                text = JSON.stringify(whisperResponse.data);
+            }
+
+            console.log(`[WHISPER-PARTIAL] ✅ Done in ${Date.now() - startTime}ms`);
+            return text.trim();
+        } catch (error: any) {
+            console.log('[WHISPER-PARTIAL] ❌ Error:', error.message);
+            return "";
+        }
+    }
 }
