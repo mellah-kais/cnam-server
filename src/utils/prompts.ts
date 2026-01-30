@@ -27,6 +27,9 @@ Rules:
 Context Codes:
 ${CNAM_CODES_INFO}
 
+Example (Tunisian): "Nheb nzid patient jdid esmo Ahmed Salah CIN 12345678 filiere privee"
+Output: {"intent": "CREATE_PATIENT", "entities": {"fullName": "Ahmed Salah", "cin": "12345678", "category": "filière privée"}}
+
 Example (Tunisian): "Nheb nzid bulletin l-Ahmed acte SC33"
 Output: {"intent": "CREATE_BULLETIN", "entities": {"patientName": "Ahmed", "acts": ["SC33"]}}
 
